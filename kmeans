@@ -1,0 +1,88 @@
+#Cargar y utilizar función IPAK
+
+ipak <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg)) 
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+}
+
+packages <- c("tidyverse","cluster", "factoextra","NbClust","tidyr", "rRedis")
+ipak(packages)
+
+#cargar los datos en data frame
+library(readxl)
+csv_compras_procesado_1_ <- read_excel("Descargas/csv_compras_procesado(1).xlsx")
+View(csv_compras_procesado_1_) 
+
+hn <- csv_compras_procesado_1_
+
+#normalizar los datos
+normalizar <- functihnron(x){(x-mean(x))/sd(x)}
+hnr <- hn
+for(i in 1_ncol(hnr)){hnr[,i] <- normalizar(hnr[,i])}
+
+
+#calcular la matriz de distacias
+m.distancia <- get_dist(df, method = "euclidean") #el método aceptado también puede ser: "maximum", "manhattan", "canberra", "binary", "minkowski", "pearson", "spearman" o "kendall"
+fviz_dist(m.distancia, gradient = list(low = "blue", mid = "white", high = "red"))
+
+#estimar el número de clústers
+#Elbow, silhouette o gap_stat  method
+fviz_nbclust(hnr, kmeans, method = "wss")
+fviz_nbclust(hnr, kmeans, method = "silhouette")
+fviz_nbclust(hnr, kmeans, method = "gap_stat")
+
+#con esta función se pueden calcular:
+#the index to be calculated. This should be one of : "kl", "ch", "hartigan", "ccc", "scott",
+#"marriot", "trcovw", "tracew", "friedman", "rubin", "cindex", "db", "silhouette", "duda",
+#"pseudot2", "beale", "ratkowsky", "ball", "ptbiserial", "gap", "frey", "mcclain", "gamma",
+#"gplus", "tau", "dunn", "hubert", "sdindex", "dindex", "sdbw", "all" (all indices except GAP,
+#Gamma, Gplus and Tau), "alllong" (all indices with Gap, Gamma, Gplus and Tau included).
+resnumclust<-NbClust(df, distance = "euclidean", min.nc=2, max.nc=10, method = "kmeans", index = "alllong")
+fviz_nbclust(resnumclust)
+
+#calculamos los  clústers
+k2 <- kmeans(hnr, centers = 3, nstart = 25)
+k2
+str(k2)
+
+#plotear los cluster
+fviz_cluster(k2, data = hnr)
+
+#modifico mi data frame para que se agregue una nueva columna "clus"
+
+library(readxl)
+csv_compras_procesado_1_ <- read_excel("Descargas/csv_compras_procesado(1).xlsx")
+df <- csv_compras_procesado_1_
+df
+df$clus<-as.factor(k2$cluster)
+df
+
+df <- USArrests
+df <- scale(df)
+df<- as.data.frame(df)
+df$clus<-as.factor(k2$cluster)
+df
+
+df$clus<-factor(df$clus)
+data_long <- gather(df, caracteristica, valor, Murder:Rape, factor_key=TRUE)
+data_long
+
+# Calcular la frecuencia de los productos
+product_frequencies <- cluster_data %>%
+  count(producto_id) %>%
+  arrange(desc(n))
+
+# Salida
+product_frequencies
+
+# Obtener el listado de productos más comprados
+top_products <- product_frequencies %>%
+  group_by(producto_id) %>%
+  top_n(15, n)  # Obtener los 15 productos más comprados
+
+# Salida
+top_products
+
+
